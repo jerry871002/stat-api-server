@@ -1,4 +1,4 @@
-module go-rest-api
+module stat-api-server
 
 go 1.22.5
 
