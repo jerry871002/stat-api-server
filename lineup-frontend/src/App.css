@@ -1,0 +1,58 @@
+.container {
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    gap: 40px;
+    padding: 20px;
+}
+
+.card {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    padding: 20px;
+    width: 450px;
+}
+
+.card h2 {
+    margin-top: 0;
+}
+
+.lineup-slot,
+.player {
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    margin-bottom: 5px;
+    background-color: white;
+    transition: background-color 0.3s;
+}
+
+.lineup-slot:hover,
+.player:hover {
+    background-color: #f9f9f9;
+}
+
+.lineup-slot.is-over {
+    background-color: lightgreen;
+}
+
+.player.is-dragging {
+    background-color: lightblue;
+}
+
+.simulate-button {
+    padding: 10px 20px;
+    font-size: 16px;
+    color: #fff;
+    background-color: #007bff;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    margin-top: 20px;
+}
+
+.simulate-results {
+    text-align: center;
+    margin-top: 20px;
+}

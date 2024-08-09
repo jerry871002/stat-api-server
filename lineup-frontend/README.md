@@ -1,6 +1,6 @@
-# Lineup Pro
+# Lineup Lab
 
-Lineup Pro is a web application that allows users to create and simulate baseball lineups. The application provides a drag-and-drop interface for organizing players into a lineup and a roster. After forming a lineup, users can simulate how this lineup performs in a game.
+Lineup Lab is a web application that allows users to create and simulate baseball lineups. The application provides a drag-and-drop interface for organizing players into a lineup and a roster. After forming a lineup, users can simulate how this lineup performs in a game.
 
 ## Features
 
