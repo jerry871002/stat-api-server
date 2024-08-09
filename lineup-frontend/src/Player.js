@@ -12,7 +12,7 @@ const Player = ({ name }) => {
   });
 
   return (
-    <div ref={drag} style={{ padding: '10px', border: '1px solid black', marginBottom: '5px', backgroundColor: isDragging ? 'lightblue' : 'white' }}>
+    <div ref={drag} className={`player ${isDragging ? 'is-dragging' : ''}`}>
       {name}
     </div>
   );

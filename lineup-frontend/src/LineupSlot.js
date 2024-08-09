@@ -12,7 +12,7 @@ const LineupSlot = ({ index, player, movePlayerToSlot }) => {
   });
 
   return (
-    <div ref={drop} style={{ padding: '10px', border: '1px solid black', marginBottom: '5px', backgroundColor: isOver ? 'lightgreen' : 'white' }}>
+    <div ref={drop} className={`lineup-slot ${isOver ? 'is-over' : ''}`}>
       {index + 1}. {player}
     </div>
   );

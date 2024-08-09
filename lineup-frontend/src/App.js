@@ -22,9 +22,13 @@ const App = () => {
 
   return (
     <DndProvider backend={HTML5Backend}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '20px' }}>
-        <Lineup />
-        <Roster players={players} />
+      <div className="container">
+        <div className="card">
+          <Lineup />
+        </div>
+        <div className="card">
+          <Roster players={players} />
+        </div>
       </div>
     </DndProvider>
   );
