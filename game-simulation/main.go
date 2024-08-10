@@ -1,20 +1,22 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"math/rand"
+	"net/http"
 )
 
 type Batter struct {
-	Name       string
-	AtBat      int
-	Hit        int
-	Double     int
-	Triple     int
-	HomeRun    int
-	Walk       int
-	HitByPitch int
+	Name       string `json:"name"`
+	AtBat      int    `json:"at_bat"`
+	Hit        int    `json:"hit"`
+	Double     int    `json:"double"`
+	Triple     int    `json:"triple"`
+	HomeRun    int    `json:"home_run"`
+	Walk       int    `json:"walk"`
+	HitByPitch int    `json:"hit_by_pitch"`
 }
 
 func (b *Batter) Single() int {
@@ -135,12 +137,12 @@ func weightedChoice(keys []int, weights []float64) int {
 	for _, weight := range weights {
 		totalWeight += weight
 	}
-	r := rand.Float64() * totalWeight
+	randVal := rand.Float64() * totalWeight
 	for i, weight := range weights {
-		if r < weight {
+		if randVal < weight {
 			return keys[i]
 		}
-		r -= weight
+		randVal -= weight
 	}
 	return keys[len(keys)-1]
 }
@@ -153,15 +155,38 @@ func sum(arr []int) int {
 	return total
 }
 
-func main() {
-	jerry := Batter{"Jerry", 30, 9, 2, 1, 1, 4, 1}
+func simulateHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var lineup []Batter
+	if err := json.NewDecoder(r.Body).Decode(&lineup); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	if len(lineup) != 9 {
+		http.Error(w, "Lineup must have 9 batters", http.StatusBadRequest)
+		return
+	}
+
 	game := NewBaseballGame()
 
 	score := 0
 	for i := 0; i < 1000; i++ {
-		game.SimulateGame([]Batter{jerry, jerry, jerry, jerry, jerry, jerry, jerry, jerry, jerry})
+		game.SimulateGame(lineup)
 		score += game.Score
 	}
 
-	fmt.Printf("Average score: %.2f\n", float64(score)/1000)
+	averageScore := float64(score) / 1000
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]float64{"average_score": averageScore})
+}
+
+func main() {
+	http.HandleFunc("/simulate", simulateHandler)
+	fmt.Println("Server is running on port 8080")
+	log.Fatal(http.ListenAndServe(":8080", nil))
 }
