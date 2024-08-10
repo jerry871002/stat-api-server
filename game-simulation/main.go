@@ -6,6 +6,7 @@ import (
 	"log"
 	"math/rand"
 	"net/http"
+	"reflect"
 )
 
 type Batter struct {
@@ -15,7 +16,7 @@ type Batter struct {
 	Double     int    `json:"double"`
 	Triple     int    `json:"triple"`
 	HomeRun    int    `json:"home_run"`
-	Walk       int    `json:"walk"`
+	BallOnBase int    `json:"ball_on_base"`
 	HitByPitch int    `json:"hit_by_pitch"`
 }
 
@@ -24,16 +25,28 @@ func (b *Batter) Single() int {
 }
 
 func (b *Batter) PlateAppearance() int {
-	return b.AtBat + b.Walk + b.HitByPitch
+	return b.AtBat + b.BallOnBase + b.HitByPitch
 }
 
 func (b *Batter) OutProbability() float64 {
 	return float64(b.AtBat-b.Hit) / float64(b.PlateAppearance())
 }
 
-func (b *Batter) AdvanceProbability() map[int]float64 {
+func (b *Batter) BallOnBaseProbability() float64 {
+	return float64(b.BallOnBase) / float64(b.PlateAppearance())
+}
+
+func (b *Batter) HitByPitchProbability() float64 {
+	return float64(b.HitByPitch) / float64(b.PlateAppearance())
+}
+
+func (b *Batter) HitProbability() float64 {
+	return float64(b.Hit) / float64(b.PlateAppearance())
+}
+
+func (b *Batter) HitAdvanceProbability() map[int]float64 {
 	return map[int]float64{
-		1: float64(b.Single()+b.Walk+b.HitByPitch) / float64(b.PlateAppearance()),
+		1: float64(b.Single()) / float64(b.PlateAppearance()),
 		2: float64(b.Double) / float64(b.PlateAppearance()),
 		3: float64(b.Triple) / float64(b.PlateAppearance()),
 		4: float64(b.HomeRun) / float64(b.PlateAppearance()),
@@ -75,20 +88,26 @@ func (g *BaseballGame) SimulateGame(lineup []Batter) {
 }
 
 func (g *BaseballGame) SimulateOneBatter(batter *Batter) {
-	if rand.Float64() < batter.OutProbability() {
-		log.Printf("Batter %s is out", batter.Name)
-		g.Outs++
-		if g.Outs == 3 {
-			g.EndOfInning()
-		}
-		return
-	}
+	outcome := weightedChoice(
+		[]string{"out", "ball_on_base", "hit_by_pitch", "hit"},
+		[]float64{batter.OutProbability(), batter.BallOnBaseProbability(), batter.HitByPitchProbability(), batter.HitProbability()},
+	)
 
-	advanceBases := g.GetAdvanceBases(batter)
-	if advanceBases == 4 {
-		g.HandleHomeRun(batter)
-	} else {
-		g.HandleAdvance(batter, advanceBases)
+	switch outcome {
+	case "out":
+		g.HandleOut(batter)
+	case "ball_on_base", "hit_by_pitch":
+		g.HandleAwardBase(batter)
+	case "hit":
+		g.HandleHit(batter)
+	}
+}
+
+func (g *BaseballGame) HandleOut(batter *Batter) {
+	log.Printf("Batter %s is out", batter.Name)
+	g.Outs++
+	if g.Outs == 3 {
+		g.EndOfInning()
 	}
 }
 
@@ -104,6 +123,29 @@ func (g *BaseballGame) EndOfInning() {
 	}
 }
 
+func (g *BaseballGame) HandleAwardBase(batter *Batter) {
+	log.Printf("Batter %s is awarded to first base (BB or HBP)", batter.Name)
+	if g.Runners[0] == 0 {
+		g.Runners[0] = 1
+	} else if reflect.DeepEqual(g.Runners, []int{1, 1, 1}) { // Bases loaded
+		log.Printf("Batter %s got 1 RBI", batter.Name)
+		g.Score++
+	} else if sum(g.Runners) == 2 {
+		g.Runners = []int{1, 1, 1}
+	} else {
+		g.Runners = append([]int{1}, g.Runners[:len(g.Runners)-1]...)
+	}
+}
+
+func (g *BaseballGame) HandleHit(batter *Batter) {
+	advanceBases := g.GetHitAdvanceBases(batter)
+	if advanceBases == 4 {
+		g.HandleHomeRun(batter)
+	} else {
+		g.HandleHitAdvance(batter, advanceBases)
+	}
+}
+
 func (g *BaseballGame) HandleHomeRun(batter *Batter) {
 	score := sum(g.Runners) + 1
 	log.Printf("Batter %s hits a home run with %d RBIs", batter.Name, score)
@@ -111,17 +153,26 @@ func (g *BaseballGame) HandleHomeRun(batter *Batter) {
 	g.Runners = []int{0, 0, 0}
 }
 
-func (g *BaseballGame) HandleAdvance(batter *Batter, advanceBases int) {
+func (g *BaseballGame) HandleHitAdvance(batter *Batter, advanceBases int) {
 	score := sum(g.Runners[len(g.Runners)-advanceBases:])
-	log.Printf("Batter %s advances %d bases with %d RBIs", batter.Name, advanceBases, score)
+	var hitType string
+	switch advanceBases {
+	case 1:
+		hitType = "single"
+	case 2:
+		hitType = "double"
+	case 3:
+		hitType = "triple"
+	}
+	log.Printf("Batter %s hits a %s with %d RBIs", batter.Name, hitType, score)
 	g.Score += score
 	newRunners := make([]int, advanceBases-1)
 	newRunners = append(newRunners, 1)
 	g.Runners = append(newRunners, g.Runners[:len(g.Runners)-advanceBases]...)
 }
 
-func (g *BaseballGame) GetAdvanceBases(batter *Batter) int {
-	advanceProbability := batter.AdvanceProbability()
+func (g *BaseballGame) GetHitAdvanceBases(batter *Batter) int {
+	advanceProbability := batter.HitAdvanceProbability()
 	keys := []int{1, 2, 3, 4}
 	weights := []float64{
 		advanceProbability[1],
@@ -132,7 +183,7 @@ func (g *BaseballGame) GetAdvanceBases(batter *Batter) int {
 	return weightedChoice(keys, weights)
 }
 
-func weightedChoice(keys []int, weights []float64) int {
+func weightedChoice[T any](keys []T, weights []float64) T {
 	totalWeight := 0.0
 	for _, weight := range weights {
 		totalWeight += weight
@@ -174,13 +225,14 @@ func simulateHandler(w http.ResponseWriter, r *http.Request) {
 
 	game := NewBaseballGame()
 
+	const numGames = 1
 	score := 0
-	for i := 0; i < 1000; i++ {
+	for i := 0; i < numGames; i++ {
 		game.SimulateGame(lineup)
 		score += game.Score
 	}
 
-	averageScore := float64(score) / 1000
+	averageScore := float64(score) / float64(numGames)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]float64{"average_score": averageScore})
 }
