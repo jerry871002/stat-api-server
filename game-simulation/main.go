@@ -3,10 +3,21 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"math/rand"
 	"net/http"
+	"os"
 	"reflect"
+	"runtime"
+	"time"
+)
+
+var (
+	debugLogger *log.Logger
+	infoLogger  *log.Logger
+	numGames    int
+	numBatches  int
 )
 
 type Batter struct {
@@ -104,7 +115,7 @@ func (g *BaseballGame) SimulateOneBatter(batter *Batter) {
 }
 
 func (g *BaseballGame) HandleOut(batter *Batter) {
-	log.Printf("Batter %s is out", batter.Name)
+	debugLogger.Printf("Batter %s is out", batter.Name)
 	g.Outs++
 	if g.Outs == 3 {
 		g.EndOfInning()
@@ -114,9 +125,9 @@ func (g *BaseballGame) HandleOut(batter *Batter) {
 func (g *BaseballGame) EndOfInning() {
 	if g.Inning == 9 {
 		g.EndOfGame = true
-		log.Printf("End of game. Final score: %d", g.Score)
+		debugLogger.Printf("End of game. Final score: %d", g.Score)
 	} else {
-		log.Printf("End of inning %d. Score: %d", g.Inning, g.Score)
+		debugLogger.Printf("End of inning %d. Score: %d", g.Inning, g.Score)
 		g.Inning++
 		g.Outs = 0
 		g.Runners = []int{0, 0, 0}
@@ -124,11 +135,11 @@ func (g *BaseballGame) EndOfInning() {
 }
 
 func (g *BaseballGame) HandleAwardBase(batter *Batter) {
-	log.Printf("Batter %s is awarded to first base (BB or HBP)", batter.Name)
+	debugLogger.Printf("Batter %s is awarded to first base (BB or HBP)", batter.Name)
 	if g.Runners[0] == 0 {
 		g.Runners[0] = 1
 	} else if reflect.DeepEqual(g.Runners, []int{1, 1, 1}) { // Bases loaded
-		log.Printf("Batter %s got 1 RBI", batter.Name)
+		debugLogger.Printf("Batter %s got 1 RBI", batter.Name)
 		g.Score++
 	} else if sum(g.Runners) == 2 {
 		g.Runners = []int{1, 1, 1}
@@ -148,7 +159,7 @@ func (g *BaseballGame) HandleHit(batter *Batter) {
 
 func (g *BaseballGame) HandleHomeRun(batter *Batter) {
 	score := sum(g.Runners) + 1
-	log.Printf("Batter %s hits a home run with %d RBIs", batter.Name, score)
+	debugLogger.Printf("Batter %s hits a home run with %d RBIs", batter.Name, score)
 	g.Score += score
 	g.Runners = []int{0, 0, 0}
 }
@@ -164,7 +175,7 @@ func (g *BaseballGame) HandleHitAdvance(batter *Batter, advanceBases int) {
 	case 3:
 		hitType = "triple"
 	}
-	log.Printf("Batter %s hits a %s with %d RBIs", batter.Name, hitType, score)
+	debugLogger.Printf("Batter %s hits a %s with %d RBIs", batter.Name, hitType, score)
 	g.Score += score
 	newRunners := make([]int, advanceBases-1)
 	newRunners = append(newRunners, 1)
@@ -206,6 +217,21 @@ func sum(arr []int) int {
 	return total
 }
 
+func simulateBatchWorker(lineup []Batter, numGames int, results chan<- int) {
+	startTime := time.Now()
+
+	game := NewBaseballGame()
+	score := 0
+	for i := 0; i < numGames; i++ {
+		game.SimulateGame(lineup)
+		score += game.Score
+	}
+	results <- score
+
+	elapsedTime := time.Since(startTime)
+	infoLogger.Printf("simulateBatchWorker took %s to simulate %d games", elapsedTime, numGames)
+}
+
 func simulateHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
@@ -223,13 +249,19 @@ func simulateHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	game := NewBaseballGame()
+	gamePerBatch := numGames / numBatches
 
-	const numGames = 1
+	results := make(chan int)
+	for i := 0; i < numBatches; i++ {
+		if i == numBatches-1 {
+			gamePerBatch = numGames - (gamePerBatch * (numBatches - 1))
+		}
+		go simulateBatchWorker(lineup, gamePerBatch, results)
+	}
+
 	score := 0
-	for i := 0; i < numGames; i++ {
-		game.SimulateGame(lineup)
-		score += game.Score
+	for i := 0; i < numBatches; i++ {
+		score += <-results
 	}
 
 	averageScore := float64(score) / float64(numGames)
@@ -237,7 +269,24 @@ func simulateHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]float64{"average_score": averageScore})
 }
 
+func configureEnvironment() {
+	debugLogger = log.New(os.Stdout, "DEBUG: ", log.Ldate|log.Ltime|log.Lshortfile)
+	infoLogger = log.New(os.Stdout, "INFO: ", log.Ldate|log.Ltime|log.Lshortfile)
+
+	// debug messages are printed only when DEBUG=1 or DEBUG=true
+	if os.Getenv("DEBUG") != "1" && os.Getenv("DEBUG") != "true" {
+		debugLogger.SetOutput(io.Discard)
+		numGames = 100000
+		numBatches = runtime.NumCPU()
+	} else {
+		numGames = 10
+		numBatches = 1
+	}
+}
+
 func main() {
+	configureEnvironment()
+
 	http.HandleFunc("/simulate", simulateHandler)
 	fmt.Println("Server is running on port 8080")
 	log.Fatal(http.ListenAndServe(":8080", nil))
