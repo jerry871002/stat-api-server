@@ -9,8 +9,32 @@ import (
 	"testing"
 )
 
+func TestGetTeams(t *testing.T) {
+	req, err := http.NewRequest("GET", "/teams/", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	MockServer := &StatServer{
+		store: NewMockStatStore(),
+	}
+
+	response := httptest.NewRecorder()
+	handler := http.HandlerFunc(MockServer.GetTeamsHandler)
+	handler.ServeHTTP(response, req)
+
+	if status := response.Code; status != http.StatusOK {
+		t.Errorf("handler returned wrong status code: got %v want %v", status, http.StatusOK)
+	}
+
+	expected := `[{"name":"Team1","year":2024},{"name":"Team2","year":2024},{"name":"Team3","year":2024}]`
+	if !IsJsonEqual(response.Body.String(), expected) {
+		t.Errorf("handler returned unexpected body: got %v want %v", response.Body.String(), expected)
+	}
+}
+
 func TestGetBatting(t *testing.T) {
-	req, err := http.NewRequest("GET", "/batting/", nil)
+	req, err := http.NewRequest("GET", "/batting/?team=test&year=2024", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -20,62 +44,15 @@ func TestGetBatting(t *testing.T) {
 	}
 
 	response := httptest.NewRecorder()
-	handler := http.HandlerFunc(MockServer.GetBattingHandler)
+	handler := http.HandlerFunc(MockServer.GetBattingStatHandler)
 	handler.ServeHTTP(response, req)
 
 	if status := response.Code; status != http.StatusOK {
 		t.Errorf("handler returned wrong status code: got %v want %v", status, http.StatusOK)
+		t.Errorf("error: %v", response.Body.String())
 	}
 
-	expected := `[{"Player":"Player1","AVG":".200"},{"Player":"Player2", "AVG":".250"},{"Player":"Player3","AVG":".300"}]`
-	if !IsJsonEqual(response.Body.String(), expected) {
-		t.Errorf("handler returned unexpected body: got %v want %v", response.Body.String(), expected)
-	}
-}
-
-func TestGetPitching(t *testing.T) {
-	req, err := http.NewRequest("GET", "/pitching/", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	MockServer := &StatServer{
-		store: NewMockStatStore(),
-	}
-
-	response := httptest.NewRecorder()
-	handler := http.HandlerFunc(MockServer.GetPitchingHandler)
-	handler.ServeHTTP(response, req)
-
-	if status := response.Code; status != http.StatusOK {
-		t.Errorf("handler returned wrong status code: got %v want %v", status, http.StatusOK)
-	}
-
-	expected := `{"Player":"Player1","ERA":"3.00"},{"Player":"Player2", "ERA":"2.50"},{"Player":"Player3","ERA":"2.00"}`
-	if !IsJsonEqual(response.Body.String(), expected) {
-		t.Errorf("handler returned unexpected body: got %v want %v", response.Body.String(), expected)
-	}
-}
-
-func TestGetFielding(t *testing.T) {
-	req, err := http.NewRequest("GET", "/fielding/", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	MockServer := &StatServer{
-		store: NewMockStatStore(),
-	}
-
-	response := httptest.NewRecorder()
-	handler := http.HandlerFunc(MockServer.GetFieldingHandler)
-	handler.ServeHTTP(response, req)
-
-	if status := response.Code; status != http.StatusOK {
-		t.Errorf("handler returned wrong status code: got %v want %v", status, http.StatusOK)
-	}
-
-	expected := `{"Player":"Player1","FLDP":".950"},{"Player":"Player2","FLDP":".960"},{"Player":"Player3","FLDP":".970"}`
+	expected := `[{"name":"Player1","at_bat":"50","hit:":"10"},{"name":"Player2","at_bat":"100","hit:":"20"},{"name":"Player3","at_bat":"150","hit:":"30"}]`
 	if !IsJsonEqual(response.Body.String(), expected) {
 		t.Errorf("handler returned unexpected body: got %v want %v", response.Body.String(), expected)
 	}

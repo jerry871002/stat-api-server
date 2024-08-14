@@ -1,6 +1,8 @@
 package main
 
-import "database/sql"
+import (
+	"database/sql"
+)
 
 type SqlStatStore struct {
 	db *sql.DB
@@ -10,26 +12,26 @@ func NewSqlStatStore(db *sql.DB) *SqlStatStore {
 	return &SqlStatStore{db: db}
 }
 
-func (s *SqlStatStore) GetPitching() ([]map[string]any, error) {
-	rows, err := s.db.Query("SELECT * FROM pitching")
+func (s *SqlStatStore) GetTeams() ([]Team, error) {
+	rows, err := s.db.Query("SELECT DISTINCT team, year FROM batting")
 	if err != nil {
 		return nil, err
 	}
 
-	return s.rowsToMap(rows)
-}
-
-func (s *SqlStatStore) GetBatting() ([]map[string]any, error) {
-	rows, err := s.db.Query("SELECT * FROM batting")
-	if err != nil {
-		return nil, err
+	data := []Team{}
+	for rows.Next() {
+		var team Team
+		if err := rows.Scan(&team.Name, &team.Year); err != nil {
+			return nil, err
+		}
+		data = append(data, team)
 	}
 
-	return s.rowsToMap(rows)
+	return data, nil
 }
 
-func (s *SqlStatStore) GetFielding() ([]map[string]any, error) {
-	rows, err := s.db.Query("SELECT * FROM fielding")
+func (s *SqlStatStore) GetBattingStat(team string, year int) ([]map[string]any, error) {
+	rows, err := s.db.Query("SELECT * FROM batting WHERE team = $1 AND year = $2", team, year)
 	if err != nil {
 		return nil, err
 	}

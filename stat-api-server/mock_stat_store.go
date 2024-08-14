@@ -1,39 +1,32 @@
 package main
 
 type MockStatStore struct {
+	TeamData     []Team
 	BattingData  []map[string]any
-	PitchingData []map[string]any
-	FieldingData []map[string]any
 }
 
 func NewMockStatStore() *MockStatStore {
 	return &MockStatStore{
+		TeamData: []Team{
+			{"Team1", 2024},
+			{"Team2", 2024},
+			{"Team3", 2024},
+		},
 		BattingData: []map[string]any{
-			{"Player": "Player1", "AVG": ".200"},
-			{"Player": "Player2", "AVG": ".250"},
-			{"Player": "Player3", "AVG": ".300"},
-		},
-		PitchingData: []map[string]any{
-			{"Player": "Player1", "ERA": "3.00"},
-			{"Player": "Player2", "ERA": "2.50"},
-			{"Player": "Player3", "ERA": "2.00"},
-		},
-		FieldingData: []map[string]any{
-			{"Player": "Player1", "FLDP": ".950"},
-			{"Player": "Player2", "FLDP": ".960"},
-			{"Player": "Player3", "FLDP": ".970"},
+			{"name": "Player1", "at_bat": "50", "hit:": "10"},
+			{"name": "Player2", "at_bat": "100", "hit:": "20"},
+			{"name": "Player3", "at_bat": "150", "hit:": "30"},
 		},
 	}
 }
 
-func (s *MockStatStore) GetPitching() ([]map[string]any, error) {
-	return s.PitchingData, nil
+func (s *MockStatStore) GetTeams() ([]Team, error) {
+	return s.TeamData, nil
 }
 
-func (s *MockStatStore) GetBatting() ([]map[string]any, error) {
-	return s.BattingData, nil
-}
-
-func (s *MockStatStore) GetFielding() ([]map[string]any, error) {
-	return s.FieldingData, nil
+func (s *MockStatStore) GetBattingStat(team string, year int) ([]map[string]any, error) {
+	if year == 2024 {
+		return s.BattingData, nil
+	}
+	return nil, nil
 }

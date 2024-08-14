@@ -6,21 +6,30 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
-	_ "github.com/mattn/go-sqlite3"
+	_ "github.com/lib/pq"
+	"github.com/rs/cors"
 )
 
 func main() {
-	db, _ := sql.Open("sqlite3", "./puumat_stats.db")
+	connStr := "postgres://myuser:mypassword@db/mydatabase?sslmode=disable"
+	db, err := sql.Open("postgres", connStr)
+	if err != nil {
+		log.Fatal(err)
+	}
 	defer db.Close()
+	log.Println("Connected to database")
+
 	server := &StatServer{
 		store: NewSqlStatStore(db),
 	}
 
 	router := mux.NewRouter()
-	router.HandleFunc("/batting/", server.GetBattingHandler).Methods("GET")
-	router.HandleFunc("/pitching/", server.GetPitchingHandler).Methods("GET")
-	router.HandleFunc("/fielding/", server.GetFieldingHandler).Methods("GET")
+	router.StrictSlash(true) // "/path/" and "/path" will be treated as the same path
+	router.HandleFunc("/teams/", server.GetTeamsHandler).Methods("GET")
+	router.HandleFunc("/batting/", server.GetBattingStatHandler).Methods("GET")
+
+	handler := cors.Default().Handler(router)
 
 	log.Println("Server started at :80")
-	log.Fatal(http.ListenAndServe(":80", router))
+	log.Fatal(http.ListenAndServe(":80", handler))
 }
