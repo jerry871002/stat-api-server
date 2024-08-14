@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"io"
 	"log"
 	"math/rand"
@@ -243,6 +242,7 @@ func simulateHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
+	infoLogger.Printf("Received lineup: %v", lineup)
 
 	if len(lineup) != 9 {
 		http.Error(w, "Lineup must have 9 batters", http.StatusBadRequest)
@@ -288,6 +288,6 @@ func main() {
 	configureEnvironment()
 
 	http.HandleFunc("/simulate", simulateHandler)
-	fmt.Println("Server is running on port 8080")
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	log.Println("Server is running on port 80")
+	log.Fatal(http.ListenAndServe(":80", nil))
 }

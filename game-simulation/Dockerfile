@@ -16,6 +16,6 @@ WORKDIR /app
 
 COPY --from=builder /app/game-simulation .
 
-EXPOSE 8080
+EXPOSE 80
 
 CMD ["./game-simulation"]
