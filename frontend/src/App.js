@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import Lineup from './Lineup';
@@ -6,31 +6,55 @@ import Roster from './Roster';
 import './App.css';
 
 const App = () => {
-  const initialPlayers = [
-    { name: 'Mike Trout', avg: 0.304, obp: 0.419, slg: 0.581 },
-    { name: 'Mookie Betts', avg: 0.296, obp: 0.374, slg: 0.524 },
-    { name: 'Freddie Freeman', avg: 0.295, obp: 0.389, slg: 0.515 },
-    { name: 'Juan Soto', avg: 0.287, obp: 0.403, slg: 0.534 },
-    { name: 'Fernando Tatis Jr.', avg: 0.282, obp: 0.364, slg: 0.592 },
-    { name: 'Ronald Acuña Jr.', avg: 0.281, obp: 0.371, slg: 0.518 },
-    { name: 'Nolan Arenado', avg: 0.293, obp: 0.349, slg: 0.521 },
-    { name: 'Bryce Harper', avg: 0.276, obp: 0.388, slg: 0.512 },
-    { name: 'Jose Altuve', avg: 0.311, obp: 0.360, slg: 0.453 },
-    { name: 'Francisco Lindor', avg: 0.285, obp: 0.346, slg: 0.487 },
-    { name: 'Christian Yelich', avg: 0.292, obp: 0.381, slg: 0.547 },
-    { name: 'Cody Bellinger', avg: 0.273, obp: 0.364, slg: 0.547 },
-  ];
-
-  const [players, setPlayers] = useState(initialPlayers.sort((a, b) => a.name.localeCompare(b.name)));
+  const [teams, setTeams] = useState([]);
+  const [selectedTeam, setSelectedTeam] = useState('');
+  const [players, setPlayers] = useState([]);
   const [lineup, setLineup] = useState(Array(9).fill(null));
   const [simulationResult, setSimulationResult] = useState(null);
+
+  useEffect(() => {
+    fetch('http://localhost:8082/teams/')
+      .then(response => response.json())
+      .then(data => setTeams(data))
+      .catch(error => console.error('Error fetching teams:', error));
+  }, []);
+
+  useEffect(() => {
+    console.log('Teams fetched:', teams);
+  }, [teams]);
+
+  useEffect(() => {
+    if (selectedTeam) {
+      const [name, year] = selectedTeam.split('+');
+      fetch(`http://localhost:8082/batting/?team=${name}&year=${year}`)
+        .then(response => response.json())
+        .then(data => {
+          // add AVG, OBP, SLG to the player data
+          data.map(player => {
+            player.avg = player.hit / player.at_bat;
+            player.obp = (player.hit + player.ball_on_base + player.hit_by_pitch) / (player.at_bat + player.ball_on_base + player.hit_by_pitch);
+            player.slg = (player.hit + player.double + 2 * player.triple + 3 * player.home_run) / player.at_bat;
+            return player;
+          });
+          setPlayers(data.sort((a, b) => a.name.localeCompare(b.name)));
+        })
+        .catch(error => console.error('Error fetching players:', error));
+    }
+  }, [selectedTeam]);
+
+  useEffect(() => {
+    console.log('Players fetched:', players);
+  }, [players]);
+
+  const onTeamChange = (event) => {
+    setSelectedTeam(event.target.value);
+  };
 
   const movePlayerToSlot = (player, index) => {
     setSimulationResult(null);
 
     const newLineup = [...lineup];
     const existingPlayer = newLineup[index];
-    console.log(existingPlayer);
 
     // the player is already in the lineup
     const playerIndex = lineup.indexOf(player);
@@ -73,8 +97,7 @@ const App = () => {
     //   body: JSON.stringify({ lineup }),
     // });
     // const result = await response.json();
-    const result = { scores: 0.250, hits: 10 };
-    setSimulationResult(result);
+    // setSimulationResult(result);
   };
 
   return (
@@ -87,7 +110,7 @@ const App = () => {
           <Lineup lineup={lineup} movePlayerToSlot={movePlayerToSlot} removePlayerFromSlot={removePlayerFromSlot} />
         </div>
         <div className="card">
-          <Roster players={players} />
+          <Roster players={players} teams={teams} selectedTeam={selectedTeam} onTeamChange={onTeamChange} />
         </div>
       </div>
       <div className="simulate-results">
