@@ -13,7 +13,7 @@ func main() {
 	db, _ := sql.Open("sqlite3", "./puumat_stats.db")
 	defer db.Close()
 	server := &StatServer{
-		store: NewSqliteStatStore(db),
+		store: NewSqlStatStore(db),
 	}
 
 	router := mux.NewRouter()
@@ -21,6 +21,6 @@ func main() {
 	router.HandleFunc("/pitching/", server.GetPitchingHandler).Methods("GET")
 	router.HandleFunc("/fielding/", server.GetFieldingHandler).Methods("GET")
 
-	log.Println("Server started at :18001")
-	log.Fatal(http.ListenAndServe(":18001", router))
+	log.Println("Server started at :80")
+	log.Fatal(http.ListenAndServe(":80", router))
 }

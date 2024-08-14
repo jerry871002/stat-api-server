@@ -2,15 +2,15 @@ package main
 
 import "database/sql"
 
-type SqliteStatStore struct {
+type SqlStatStore struct {
 	db *sql.DB
 }
 
-func NewSqliteStatStore(db *sql.DB) *SqliteStatStore {
-	return &SqliteStatStore{db: db}
+func NewSqlStatStore(db *sql.DB) *SqlStatStore {
+	return &SqlStatStore{db: db}
 }
 
-func (s *SqliteStatStore) GetPitching() ([]map[string]any, error) {
+func (s *SqlStatStore) GetPitching() ([]map[string]any, error) {
 	rows, err := s.db.Query("SELECT * FROM pitching")
 	if err != nil {
 		return nil, err
@@ -19,7 +19,7 @@ func (s *SqliteStatStore) GetPitching() ([]map[string]any, error) {
 	return s.rowsToMap(rows)
 }
 
-func (s *SqliteStatStore) GetBatting() ([]map[string]any, error) {
+func (s *SqlStatStore) GetBatting() ([]map[string]any, error) {
 	rows, err := s.db.Query("SELECT * FROM batting")
 	if err != nil {
 		return nil, err
@@ -28,7 +28,7 @@ func (s *SqliteStatStore) GetBatting() ([]map[string]any, error) {
 	return s.rowsToMap(rows)
 }
 
-func (s *SqliteStatStore) GetFielding() ([]map[string]any, error) {
+func (s *SqlStatStore) GetFielding() ([]map[string]any, error) {
 	rows, err := s.db.Query("SELECT * FROM fielding")
 	if err != nil {
 		return nil, err
@@ -37,7 +37,7 @@ func (s *SqliteStatStore) GetFielding() ([]map[string]any, error) {
 	return s.rowsToMap(rows)
 }
 
-func (s *SqliteStatStore) rowsToMap(rows *sql.Rows) ([]map[string]any, error) {
+func (s *SqlStatStore) rowsToMap(rows *sql.Rows) ([]map[string]any, error) {
 	var data []map[string]any
 	cols, _ := rows.Columns()
 	for rows.Next() {
