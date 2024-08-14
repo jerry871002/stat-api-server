@@ -20,12 +20,20 @@
 
 .lineup-slot,
 .player {
-    padding: 10px;
+    min-height: 2.6rem;
+    line-height: 2.6rem;
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
     border: 1px solid #ddd;
     border-radius: 4px;
     margin-bottom: 5px;
     background-color: white;
     transition: background-color 0.3s;
+}
+
+.lineup-slot > .player {
+    border: 0px;
+    margin-bottom: 0;
 }
 
 .lineup-slot:hover,

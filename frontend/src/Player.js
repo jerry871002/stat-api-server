@@ -13,7 +13,7 @@ const Player = ({ player }) => {
 
   return (
     <div ref={drag} className={`player ${isDragging ? 'is-dragging' : ''}`}>
-      <strong>{player.name}</strong> (AVG: {player.avg.toFixed(3)}, OBP: {player.obp.toFixed(3)}, OPS: {player.ops.toFixed(3)})
+      <strong>{player.name}</strong> ({player.avg.toFixed(3)} / {player.obp.toFixed(3)} / {player.slg.toFixed(3)})
     </div>
   );
 };

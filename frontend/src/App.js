@@ -7,18 +7,18 @@ import './App.css';
 
 const App = () => {
   const initialPlayers = [
-    { name: 'Mike Trout', avg: 0.304, obp: 0.419, ops: 1.000 },
-    { name: 'Mookie Betts', avg: 0.296, obp: 0.374, ops: 0.915 },
-    { name: 'Freddie Freeman', avg: 0.295, obp: 0.389, ops: 0.892 },
-    { name: 'Juan Soto', avg: 0.287, obp: 0.403, ops: 0.937 },
-    { name: 'Fernando Tatis Jr.', avg: 0.282, obp: 0.364, ops: 0.956 },
-    { name: 'Ronald Acuña Jr.', avg: 0.281, obp: 0.371, ops: 0.909 },
-    { name: 'Nolan Arenado', avg: 0.293, obp: 0.349, ops: 0.890 },
-    { name: 'Bryce Harper', avg: 0.276, obp: 0.388, ops: 0.900 },
-    { name: 'Jose Altuve', avg: 0.311, obp: 0.360, ops: 0.820 },
-    { name: 'Francisco Lindor', avg: 0.285, obp: 0.346, ops: 0.833 },
-    { name: 'Christian Yelich', avg: 0.292, obp: 0.381, ops: 0.928 },
-    { name: 'Cody Bellinger', avg: 0.273, obp: 0.364, ops: 0.911 },
+    { name: 'Mike Trout', avg: 0.304, obp: 0.419, slg: 0.581 },
+    { name: 'Mookie Betts', avg: 0.296, obp: 0.374, slg: 0.524 },
+    { name: 'Freddie Freeman', avg: 0.295, obp: 0.389, slg: 0.515 },
+    { name: 'Juan Soto', avg: 0.287, obp: 0.403, slg: 0.534 },
+    { name: 'Fernando Tatis Jr.', avg: 0.282, obp: 0.364, slg: 0.592 },
+    { name: 'Ronald Acuña Jr.', avg: 0.281, obp: 0.371, slg: 0.518 },
+    { name: 'Nolan Arenado', avg: 0.293, obp: 0.349, slg: 0.521 },
+    { name: 'Bryce Harper', avg: 0.276, obp: 0.388, slg: 0.512 },
+    { name: 'Jose Altuve', avg: 0.311, obp: 0.360, slg: 0.453 },
+    { name: 'Francisco Lindor', avg: 0.285, obp: 0.346, slg: 0.487 },
+    { name: 'Christian Yelich', avg: 0.292, obp: 0.381, slg: 0.547 },
+    { name: 'Cody Bellinger', avg: 0.273, obp: 0.364, slg: 0.547 },
   ];
 
   const [players, setPlayers] = useState(initialPlayers.sort((a, b) => a.name.localeCompare(b.name)));
@@ -27,11 +27,21 @@ const App = () => {
 
   const movePlayerToSlot = (player, index) => {
     setSimulationResult(null);
+
     const newLineup = [...lineup];
     const existingPlayer = newLineup[index];
     console.log(existingPlayer);
 
-    // Move the existing player back to the roster if there is one
+    // the player is already in the lineup
+    const playerIndex = lineup.indexOf(player);
+    if (playerIndex !== -1) {
+      newLineup[index] = player;
+      newLineup[playerIndex] = existingPlayer;
+      setLineup(newLineup);
+      return;
+    }
+
+    // move the existing player back to the roster if there is one
     if (existingPlayer) {
       setPlayers(prevPlayers => 
         [...prevPlayers, existingPlayer].sort((a, b) => a.name.localeCompare(b.name))
