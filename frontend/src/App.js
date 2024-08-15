@@ -20,10 +20,6 @@ const App = () => {
   }, []);
 
   useEffect(() => {
-    console.log('Teams fetched:', teams);
-  }, [teams]);
-
-  useEffect(() => {
     if (selectedTeam) {
       const [name, year] = selectedTeam.split('+');
       fetch(`http://localhost:8082/batting/?team=${name}&year=${year}`)
@@ -42,12 +38,9 @@ const App = () => {
     }
   }, [selectedTeam]);
 
-  useEffect(() => {
-    console.log('Players fetched:', players);
-  }, [players]);
-
   const onTeamChange = (event) => {
     setSelectedTeam(event.target.value);
+    setLineup(Array(9).fill(null));
   };
 
   const movePlayerToSlot = (player, index) => {
@@ -89,15 +82,16 @@ const App = () => {
   };
 
   const simulateLineup = async () => {
-    // const response = await fetch('https://api.example.com/simulate', {
-    //   method: 'POST',
-    //   headers: {
-    //     'Content-Type': 'application/json',
-    //   },
-    //   body: JSON.stringify({ lineup }),
-    // });
-    // const result = await response.json();
-    // setSimulationResult(result);
+    const response = await fetch('http://localhost:8081/simulate', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(lineup),
+    });
+    const result = await response.json();
+    console.log(result);
+    setSimulationResult(result);
   };
 
   return (
@@ -107,20 +101,17 @@ const App = () => {
       </header>
       <div className="container">
         <div className="card">
-          <Lineup lineup={lineup} movePlayerToSlot={movePlayerToSlot} removePlayerFromSlot={removePlayerFromSlot} />
+          <Lineup
+            lineup={lineup}
+            movePlayerToSlot={movePlayerToSlot}
+            removePlayerFromSlot={removePlayerFromSlot}
+            simulateLineup={simulateLineup}
+            simulationResult={simulationResult}
+          />
         </div>
         <div className="card">
           <Roster players={players} teams={teams} selectedTeam={selectedTeam} onTeamChange={onTeamChange} />
         </div>
-      </div>
-      <div className="simulate-results">
-        <button className="simulate-button" onClick={simulateLineup}>Simulate</button>
-        {simulationResult && (
-          <div>
-            <p>Average Scores: {simulationResult.scores}</p>
-            <p>Average Hits: {simulationResult.hits}</p>
-          </div>
-        )}
       </div>
     </DndProvider>
   );

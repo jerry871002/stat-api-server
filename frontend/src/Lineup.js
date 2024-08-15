@@ -1,7 +1,7 @@
 import React from 'react';
 import LineupSlot from './LineupSlot';
 
-const Lineup = ({ lineup, movePlayerToSlot, removePlayerFromSlot }) => {
+const Lineup = ({ lineup, movePlayerToSlot, removePlayerFromSlot, simulateLineup, simulationResult }) => {
   return (
     <div>
       <h2>Lineup</h2>
@@ -14,6 +14,15 @@ const Lineup = ({ lineup, movePlayerToSlot, removePlayerFromSlot }) => {
           removePlayerFromSlot={removePlayerFromSlot}
         />
       ))}
+      <div className="simulate-results">
+        <button className="simulate-button" onClick={simulateLineup}>Simulate</button>
+        {simulationResult && (
+          <div>
+            <p>Average Score: <strong>{simulationResult.average_score.toFixed(2)}</strong></p>
+            <p>Average Hits: <strong>{simulationResult.average_hits.toFixed(2)}</strong></p>
+          </div>
+        )}
+      </div>
     </div>
   );
 };

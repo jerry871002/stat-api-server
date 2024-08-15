@@ -7,7 +7,7 @@ const Roster = ({ players, teams, selectedTeam, onTeamChange }) => {
       <div className="roster-header">
         <h2>Roster</h2>
         <select value={selectedTeam} onChange={onTeamChange} className="dropdown">
-          <option value="" disabled selected>Select a team</option>
+          <option value="" disabled>Select a team</option>
           {teams.map((team, index) => (
             <option key={index} value={`${team.name}+${team.year}`}>{team.name} ({team.year})</option>
           ))}
