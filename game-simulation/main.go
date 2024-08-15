@@ -10,6 +10,8 @@ import (
 	"reflect"
 	"runtime"
 	"time"
+
+	"github.com/rs/cors"
 )
 
 var (
@@ -67,6 +69,7 @@ type BaseballGame struct {
 	Inning    int
 	Outs      int
 	Score     int
+	Hits	  int
 	Runners   []int
 	EndOfGame bool
 }
@@ -79,6 +82,7 @@ func (g *BaseballGame) Reset() {
 	g.Inning = 1
 	g.Outs = 0
 	g.Score = 0
+	g.Hits = 0
 	g.Runners = []int{0, 0, 0}
 	g.EndOfGame = false
 }
@@ -148,6 +152,7 @@ func (g *BaseballGame) HandleAwardBase(batter *Batter) {
 }
 
 func (g *BaseballGame) HandleHit(batter *Batter) {
+	g.Hits++
 	advanceBases := g.GetHitAdvanceBases(batter)
 	if advanceBases == 4 {
 		g.HandleHomeRun(batter)
@@ -216,30 +221,37 @@ func sum(arr []int) int {
 	return total
 }
 
-func simulateBatchWorker(lineup []Batter, numGames int, results chan<- int) {
+func simulateBatchWorker(lineup []Batter, numGames int, scoreChan chan<- int, hitChan chan<- int) {
 	startTime := time.Now()
 
 	game := NewBaseballGame()
-	score := 0
+	scores := 0
+	hits := 0
 	for i := 0; i < numGames; i++ {
 		game.SimulateGame(lineup)
-		score += game.Score
+		scores += game.Score
+		hits += game.Hits
 	}
-	results <- score
+	scoreChan <- scores
+	hitChan <- hits
 
 	elapsedTime := time.Since(startTime)
 	infoLogger.Printf("simulateBatchWorker took %s to simulate %d games", elapsedTime, numGames)
 }
 
 func simulateHandler(w http.ResponseWriter, r *http.Request) {
+	log.Println("simulateHandler is called")
+
 	if r.Method != http.MethodPost {
 		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
+		log.Println("Invalid request method:", r.Method)
 		return
 	}
 
 	var lineup []Batter
 	if err := json.NewDecoder(r.Body).Decode(&lineup); err != nil {
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		log.Println(err)
 		return
 	}
 	infoLogger.Printf("Received lineup: %v", lineup)
@@ -251,22 +263,29 @@ func simulateHandler(w http.ResponseWriter, r *http.Request) {
 
 	gamePerBatch := numGames / numBatches
 
-	results := make(chan int)
+	scoreChan := make(chan int)
+	hitChan := make(chan int)
 	for i := 0; i < numBatches; i++ {
 		if i == numBatches-1 {
 			gamePerBatch = numGames - (gamePerBatch * (numBatches - 1))
 		}
-		go simulateBatchWorker(lineup, gamePerBatch, results)
+		go simulateBatchWorker(lineup, gamePerBatch, scoreChan, hitChan)
 	}
 
-	score := 0
+	totalScore := 0
+	totalHits := 0
 	for i := 0; i < numBatches; i++ {
-		score += <-results
+		totalScore += <-scoreChan
+		totalHits += <-hitChan
 	}
 
-	averageScore := float64(score) / float64(numGames)
+	averageScore := float64(totalScore) / float64(numGames)
+	averageHits := float64(totalHits) / float64(numGames)
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]float64{"average_score": averageScore})
+	json.NewEncoder(w).Encode(map[string]float64{
+		"average_score": averageScore,
+		"average_hits": averageHits,
+	})
 }
 
 func configureEnvironment() {
@@ -288,6 +307,9 @@ func main() {
 	configureEnvironment()
 
 	http.HandleFunc("/simulate", simulateHandler)
+
+	handler := cors.Default().Handler(http.DefaultServeMux)
+
 	log.Println("Server is running on port 80")
-	log.Fatal(http.ListenAndServe(":80", nil))
+	log.Fatal(http.ListenAndServe(":80", handler))
 }
