@@ -57,7 +57,7 @@ func simulateBatchWorker(lineup []Batter, numGames int, scoreChan chan<- int, hi
 	hitChan <- hits
 
 	elapsedTime := time.Since(startTime)
-	infoLogger.Printf("simulateBatchWorker took %s to simulate %d games", elapsedTime, numGames)
+	debugLogger.Printf("simulateBatchWorker took %s to simulate %d games", elapsedTime, numGames)
 }
 
 func simulateGamesInParallel(lineup []Batter, numGames, numBatches int) map[string]float64 {
@@ -119,7 +119,7 @@ func simulateHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	result := simulateGamesInParallel(lineup, numGames, numBatches)
-	
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(result)
 }
@@ -133,7 +133,7 @@ func optimizeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	infoLogger.Printf("Received roster: %v", roster)
 
-	optimizer := NewGeneticOptimizer(100, 100)
+	optimizer := NewGeneticOptimizer(50, 50)
 	lineup := optimizer.Optimize(roster)
 
 	w.Header().Set("Content-Type", "application/json")

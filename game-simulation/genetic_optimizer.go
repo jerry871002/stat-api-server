@@ -2,18 +2,19 @@ package main
 
 import (
 	"math/rand"
-	"runtime"
+	"sync"
+	"time"
 )
 
 type GeneticOptimizer struct {
 	Optimizer
-	MaxGeneration int
+	MaxGeneration  int
 	PopulationSize int
 }
 
 func NewGeneticOptimizer(maxGeneration, populationSize int) *GeneticOptimizer {
 	return &GeneticOptimizer{
-		MaxGeneration: maxGeneration,
+		MaxGeneration:  maxGeneration,
 		PopulationSize: populationSize,
 	}
 }
@@ -23,16 +24,41 @@ func (g *GeneticOptimizer) Optimize(roster Roster) Lineup {
 	for i := 0; i < g.PopulationSize; i++ {
 		population[i] = g.GenerateRandomLineup(roster)
 	}
-	infoLogger.Println("Initial population:", population)
 
+	maxFitnessScore := 0.0
+	bestLineup := Lineup{}
 	for gen := 0; gen < g.MaxGeneration; gen++ {
+		infoLogger.Println("Generation:", gen)
+
 		// Evaluate population
+		startTime := time.Now()
 		fitnessScores := make([]float64, g.PopulationSize)
+
+		var wg sync.WaitGroup
+
 		for i, lineup := range population {
-			fitnessScores[i] = g.ComputeFitness(lineup)
+			wg.Add(1) // Increment the WaitGroup counter
+
+			go func(i int, lineup Lineup) {
+				defer wg.Done() // Decrement the counter when the goroutine completes
+				fitnessScores[i] = g.ComputeFitness(lineup)
+			}(i, lineup)
 		}
 
-		infoLogger.Println("fitnessScores:", fitnessScores)
+		// Wait for all goroutines to complete
+		wg.Wait()
+
+		elapsedTime := time.Since(startTime)
+		infoLogger.Printf("Evaluating population took %s", elapsedTime)
+
+		// Find the best lineup
+		for i, s := range fitnessScores {
+			if s > maxFitnessScore {
+				maxFitnessScore = s
+				bestLineup = population[i]
+			}
+		}
+		infoLogger.Println("Best fitness score so far:", maxFitnessScore)
 
 		// Select parents
 		parents := g.SelectParents(population, fitnessScores)
@@ -42,17 +68,15 @@ func (g *GeneticOptimizer) Optimize(roster Roster) Lineup {
 	}
 
 	// Find the best lineup
-	maxFitnessScore := 0.0
-	bestLineup := Lineup{}
-	for i, lineup := range population {
+	for _, lineup := range population {
 		fitnessScore := g.ComputeFitness(lineup)
 		if fitnessScore > maxFitnessScore {
 			maxFitnessScore = fitnessScore
-			bestLineup = population[i]
+			bestLineup = lineup
 		}
 	}
 
-	infoLogger.Println("bestLineup:", bestLineup, "with fitness score:", maxFitnessScore)
+	infoLogger.Println("Best lineup:", bestLineup, "with fitness score:", maxFitnessScore)
 
 	return bestLineup
 }
@@ -64,7 +88,7 @@ func (g *GeneticOptimizer) GenerateRandomLineup(roster Roster) Lineup {
 		var candidate Batter
 		for {
 			candidate = roster[rand.Intn(len(roster))]
-			if !inMap(candidate.Name, inLineup) {
+			if !inLineup[candidate.Name] {
 				break
 			}
 		}
@@ -76,9 +100,9 @@ func (g *GeneticOptimizer) GenerateRandomLineup(roster Roster) Lineup {
 
 func (g *GeneticOptimizer) ComputeFitness(lineup Lineup) float64 {
 	numGames := 1000
-	numBatches := runtime.NumCPU()
+	numBatches := 1
 	result := simulateGamesInParallel(lineup, numGames, numBatches)
-	return result["average_score"] * 100 + result["average_hits"]
+	return result["average_score"]*100 + result["average_hits"]
 }
 
 func (g *GeneticOptimizer) SelectParents(population []Lineup, fitnessScores []float64) []Lineup {
@@ -96,10 +120,10 @@ func (g *GeneticOptimizer) SelectParents(population []Lineup, fitnessScores []fl
 
 func (g *GeneticOptimizer) CrossoverAndMutate(parents []Lineup) []Lineup {
 	children := make([]Lineup, g.PopulationSize)
-	for i := 0; i < len(parents) / 2; i++ {
-		p1, p2 := parents[2*i], parents[2*i + 1]
+	for i := 0; i < len(parents)/2; i++ {
+		p1, p2 := parents[2*i], parents[2*i+1]
 		c1, c2 := g.Crossover(p1, p2)
-		children[2*i], children[2*i + 1] = g.Mutate(c1, c2)
+		children[2*i], children[2*i+1] = g.Mutate(c1, c2)
 	}
 	return children
 }
@@ -108,44 +132,47 @@ func (g *GeneticOptimizer) Crossover(p1, p2 Lineup) (Lineup, Lineup) {
 	child1, child2 := make([]Batter, 9), make([]Batter, 9)
 
 	for _, child := range []Lineup{child1, child2} {
-		standby := []Batter{}
-		inChild := map[string]bool{}
-		for i := 0; i < 9; i++ {
-			candidate1, candidate2 := p1[i], p2[i]
-			if inMap(candidate1.Name, inChild) && inMap(candidate2.Name, inChild) {
-				// Both candidates are already in child, use standby list
-				var standbyCandidate Batter
-				for {
-					standbyCandidate = standby[rand.Intn(len(standby))]
-					if !inMap(standbyCandidate.Name, inChild) {
-						break
-					}
-				}
-				child[i] = standbyCandidate
-				inChild[standbyCandidate.Name] = true
-			} else if inMap(candidate1.Name, inChild) {
-				child[i] = candidate2
-				inChild[candidate2.Name] = true
-				standby = append(standby, candidate1)
-			} else if inMap(candidate2.Name, inChild) {
-				child[i] = candidate1
-				inChild[candidate1.Name] = true
-				standby = append(standby, candidate2)
-			} else {
-				if rand.Float64() < 0.5 {
-					child[i] = candidate1
-					inChild[candidate1.Name] = true
-					standby = append(standby, candidate2)
-				} else {
-					child[i] = candidate2
-					inChild[candidate2.Name] = true
-					standby = append(standby, candidate1)
-				}
-			}
-		}
+		// standbyCandidates and selectedBatters eventually hold up to 9 batters
+		// predefine capacity for performance
+		standbyCandidates := make([]Batter, 0, 9)
+		selectedBatters := make(map[string]bool, 9)
+
+        for i := 0; i < 9; i++ {
+            candidate1, candidate2 := p1[i], p2[i]
+            child[i] = g.selectBatter(candidate1, candidate2, selectedBatters, standbyCandidates)
+            selectedBatters[child[i].Name] = true
+            if child[i] == candidate1 {
+                standbyCandidates = append(standbyCandidates, candidate2)
+            } else {
+                standbyCandidates = append(standbyCandidates, candidate1)
+            }
+        }
 	}
 
 	return child1, child2
+}
+
+func (g *GeneticOptimizer) selectBatter(candidate1, candidate2 Batter, selectedBatters map[string]bool, standbyCandidates []Batter) Batter {
+    if selectedBatters[candidate1.Name] && selectedBatters[candidate2.Name] {
+        return g.selectFromStandby(standbyCandidates, selectedBatters)
+    } else if selectedBatters[candidate1.Name] {
+        return candidate2
+    } else if selectedBatters[candidate2.Name] {
+        return candidate1
+    }
+    if rand.Float64() < 0.5 {
+        return candidate1
+    }
+    return candidate2
+}
+
+func (g *GeneticOptimizer) selectFromStandby(standbyCandidates []Batter, selectedBatters map[string]bool) Batter {
+    for {
+        candidate := standbyCandidates[rand.Intn(len(standbyCandidates))]
+        if !selectedBatters[candidate.Name] {
+            return candidate
+        }
+    }
 }
 
 func (g *GeneticOptimizer) Mutate(c1, c2 Lineup) (Lineup, Lineup) {
@@ -156,9 +183,4 @@ func (g *GeneticOptimizer) Mutate(c1, c2 Lineup) (Lineup, Lineup) {
 		}
 	}
 	return c1, c2
-}
-
-func inMap[T comparable](key T, m map[T]bool) bool {
-	_, ok := m[key]
-	return ok
 }
