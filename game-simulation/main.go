@@ -133,7 +133,7 @@ func optimizeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	infoLogger.Printf("Received roster: %v", roster)
 
-	optimizer := NewGeneticOptimizer(50, 50)
+	optimizer := NewGeneticOptimizer(50, 50, 0.2)
 	lineup := optimizer.Optimize(roster)
 
 	w.Header().Set("Content-Type", "application/json")

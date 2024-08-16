@@ -100,10 +100,7 @@ func TestBatterHitAdvanceProbability(t *testing.T) {
 	}
 }
 
-func FloatEqual(a, b float64, args ...float64) bool {
+func FloatEqual(a, b float64) bool {
 	epsilon := 1e-9
-	if len(args) > 0 {
-		epsilon = args[0]
-	}
 	return math.Abs(a-b) < epsilon
 }

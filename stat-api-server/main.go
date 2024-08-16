@@ -24,9 +24,9 @@ func main() {
 	}
 
 	router := mux.NewRouter()
-	router.StrictSlash(true) // "/path/" and "/path" will be treated as the same path
-	router.HandleFunc("/teams/", server.GetTeamsHandler).Methods("GET")
-	router.HandleFunc("/batting/", server.GetBattingStatHandler).Methods("GET")
+	router.StrictSlash(true) // "/path" and "/path/" will be treated as the same path
+	router.HandleFunc("/teams", server.GetTeamsHandler).Methods("GET")
+	router.HandleFunc("/batting", server.GetBattingStatHandler).Methods("GET")
 
 	handler := cors.Default().Handler(router)
 

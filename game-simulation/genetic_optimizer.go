@@ -10,12 +10,14 @@ type GeneticOptimizer struct {
 	Optimizer
 	MaxGeneration  int
 	PopulationSize int
+	MutationRate   float64
 }
 
-func NewGeneticOptimizer(maxGeneration, populationSize int) *GeneticOptimizer {
+func NewGeneticOptimizer(maxGeneration, populationSize int, mutationRate float64) *GeneticOptimizer {
 	return &GeneticOptimizer{
 		MaxGeneration:  maxGeneration,
 		PopulationSize: populationSize,
+		MutationRate:   mutationRate,
 	}
 }
 
@@ -32,32 +34,15 @@ func (g *GeneticOptimizer) Optimize(roster Roster) Lineup {
 
 		// Evaluate population
 		startTime := time.Now()
-		fitnessScores := make([]float64, g.PopulationSize)
 
-		var wg sync.WaitGroup
-
-		for i, lineup := range population {
-			wg.Add(1) // Increment the WaitGroup counter
-
-			go func(i int, lineup Lineup) {
-				defer wg.Done() // Decrement the counter when the goroutine completes
-				fitnessScores[i] = g.ComputeFitness(lineup)
-			}(i, lineup)
+		fitnessScores, genMaxFitnessScore, genBestLineup := g.EvaluatePopulation(population)
+		if genMaxFitnessScore > maxFitnessScore {
+			maxFitnessScore = genMaxFitnessScore
+			bestLineup = genBestLineup
 		}
-
-		// Wait for all goroutines to complete
-		wg.Wait()
 
 		elapsedTime := time.Since(startTime)
 		infoLogger.Printf("Evaluating population took %s", elapsedTime)
-
-		// Find the best lineup
-		for i, s := range fitnessScores {
-			if s > maxFitnessScore {
-				maxFitnessScore = s
-				bestLineup = population[i]
-			}
-		}
 		infoLogger.Println("Best fitness score so far:", maxFitnessScore)
 
 		// Select parents
@@ -96,6 +81,30 @@ func (g *GeneticOptimizer) GenerateRandomLineup(roster Roster) Lineup {
 		inLineup[candidate.Name] = true
 	}
 	return lineup
+}
+
+func (g *GeneticOptimizer) EvaluatePopulation(population []Lineup) ([]float64, float64, Lineup) {
+    fitnessScores := make([]float64, g.PopulationSize)
+    var wg sync.WaitGroup
+
+    maxFitnessScore := 0.0
+    bestLineup := Lineup{}
+
+    for i, lineup := range population {
+        wg.Add(1)
+        go func(i int, lineup Lineup) {
+            defer wg.Done()
+            fitness := g.ComputeFitness(lineup)
+            fitnessScores[i] = fitness
+            if fitness > maxFitnessScore {
+                maxFitnessScore = fitness
+                bestLineup = lineup
+            }
+        }(i, lineup)
+    }
+
+    wg.Wait()
+    return fitnessScores, maxFitnessScore, bestLineup
 }
 
 func (g *GeneticOptimizer) ComputeFitness(lineup Lineup) float64 {
