@@ -1,0 +1,27 @@
+name: Test game simulation
+
+on:
+  push:
+    branches: [ "main" ]
+    paths: [ 'game-simulation/**' ]
+  pull_request:
+    branches: [ "main" ]
+    paths: [ 'game-simulation/**' ]
+
+jobs:
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.22'
+
+    - name: Build
+      run: go build -v ./...
+
+    - name: Test
+      run: go test -v ./...
