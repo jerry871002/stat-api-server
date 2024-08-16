@@ -8,9 +8,9 @@ import (
 
 func TestBatterSingle(t *testing.T) {
 	b := &Batter{
-		Hit:    20,
-		Double: 5,
-		Triple: 2,
+		Hit:     20,
+		Double:  5,
+		Triple:  2,
 		HomeRun: 3,
 	}
 	expected := 10
@@ -33,8 +33,8 @@ func TestBatterPlateAppearance(t *testing.T) {
 
 func TestBatterOutProbability(t *testing.T) {
 	b := &Batter{
-		AtBat:  100,
-		Hit:    30,
+		AtBat: 100,
+		Hit:   30,
 	}
 	expected := 0.7
 	if got := b.OutProbability(); !FloatEqual(got, expected) {
@@ -69,7 +69,7 @@ func TestBatterHitByPitchProbability(t *testing.T) {
 func TestBatterHitProbability(t *testing.T) {
 	b := &Batter{
 		AtBat:      100,
-		Hit:		30,
+		Hit:        30,
 		BallOnBase: 20,
 		HitByPitch: 5,
 	}
@@ -82,10 +82,10 @@ func TestBatterHitProbability(t *testing.T) {
 func TestBatterHitAdvanceProbability(t *testing.T) {
 	b := &Batter{
 		AtBat:      100,
-		Hit:    30,
-		Double: 5,
-		Triple: 2,
-		HomeRun: 3,
+		Hit:        30,
+		Double:     5,
+		Triple:     2,
+		HomeRun:    3,
 		BallOnBase: 20,
 		HitByPitch: 5,
 	}

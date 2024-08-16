@@ -9,7 +9,7 @@ type BaseballGame struct {
 	Inning    int
 	Outs      int
 	Score     int
-	Hits	  int
+	Hits      int
 	Runners   []int
 	EndOfGame bool
 }

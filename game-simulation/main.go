@@ -114,7 +114,7 @@ func simulateHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]float64{
 		"average_score": averageScore,
-		"average_hits": averageHits,
+		"average_hits":  averageHits,
 	})
 }
 
