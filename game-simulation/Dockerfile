@@ -8,7 +8,7 @@ RUN go mod download
 
 COPY *.go ./
 
-RUN go build -o game-simulation main.go
+RUN go build -o game-simulation
 
 FROM debian:bullseye-slim
 

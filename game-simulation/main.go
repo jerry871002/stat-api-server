@@ -60,6 +60,33 @@ func simulateBatchWorker(lineup []Batter, numGames int, scoreChan chan<- int, hi
 	infoLogger.Printf("simulateBatchWorker took %s to simulate %d games", elapsedTime, numGames)
 }
 
+func simulateGamesInParallel(lineup []Batter, numGames, numBatches int) map[string]float64 {
+	gamePerBatch := numGames / numBatches
+
+	scoreChan := make(chan int)
+	hitChan := make(chan int)
+	for i := 0; i < numBatches; i++ {
+		if i == numBatches-1 {
+			gamePerBatch = numGames - (gamePerBatch * (numBatches - 1))
+		}
+		go simulateBatchWorker(lineup, gamePerBatch, scoreChan, hitChan)
+	}
+
+	totalScore := 0
+	totalHits := 0
+	for i := 0; i < numBatches; i++ {
+		totalScore += <-scoreChan
+		totalHits += <-hitChan
+	}
+
+	averageScore := float64(totalScore) / float64(numGames)
+	averageHits := float64(totalHits) / float64(numGames)
+	return map[string]float64{
+		"average_score": averageScore,
+		"average_hits":  averageHits,
+	}
+}
+
 func simulateHandler(w http.ResponseWriter, r *http.Request) {
 	log.Println("simulateHandler is called")
 
@@ -91,31 +118,26 @@ func simulateHandler(w http.ResponseWriter, r *http.Request) {
 		numBatches = runtime.NumCPU()
 	}
 
-	gamePerBatch := numGames / numBatches
-
-	scoreChan := make(chan int)
-	hitChan := make(chan int)
-	for i := 0; i < numBatches; i++ {
-		if i == numBatches-1 {
-			gamePerBatch = numGames - (gamePerBatch * (numBatches - 1))
-		}
-		go simulateBatchWorker(lineup, gamePerBatch, scoreChan, hitChan)
-	}
-
-	totalScore := 0
-	totalHits := 0
-	for i := 0; i < numBatches; i++ {
-		totalScore += <-scoreChan
-		totalHits += <-hitChan
-	}
-
-	averageScore := float64(totalScore) / float64(numGames)
-	averageHits := float64(totalHits) / float64(numGames)
+	result := simulateGamesInParallel(lineup, numGames, numBatches)
+	
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]float64{
-		"average_score": averageScore,
-		"average_hits":  averageHits,
-	})
+	json.NewEncoder(w).Encode(result)
+}
+
+func optimizeHandler(w http.ResponseWriter, r *http.Request) {
+	var roster []Batter
+	if err := json.NewDecoder(r.Body).Decode(&roster); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		log.Println(err)
+		return
+	}
+	infoLogger.Printf("Received roster: %v", roster)
+
+	optimizer := NewGeneticOptimizer(100, 100)
+	lineup := optimizer.Optimize(roster)
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(lineup)
 }
 
 func initLogger() {
@@ -136,10 +158,10 @@ func configEnv() {
 
 	// debug messages are printed only when DEBUG=1 or DEBUG=true
 	if os.Getenv("DEBUG") != "1" && os.Getenv("DEBUG") != "true" {
-		debugMode = true
+		debugMode = false
 		debugLogger.SetOutput(io.Discard)
 	} else {
-		debugMode = false
+		debugMode = true
 	}
 }
 
@@ -147,6 +169,7 @@ func main() {
 	configEnv()
 
 	http.HandleFunc("/simulate", simulateHandler)
+	http.HandleFunc("/optimize", optimizeHandler)
 
 	handler := cors.Default().Handler(http.DefaultServeMux)
 
