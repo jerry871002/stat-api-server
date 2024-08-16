@@ -22,7 +22,11 @@ jobs:
         go-version: '1.22'
 
     - name: Build
-      run: go build -v stat-api-server/...
+      run: |
+        cd stat-api-server
+        go build -v ./...
 
     - name: Test
-      run: go test -v stat-api-server/...
+      run: |
+        cd stat-api-server
+        go test -v ./...
